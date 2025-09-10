@@ -10,6 +10,8 @@ function App() {
   const [savedTweets, setSavedTweets] = useState([])
   const [showSavedTweets, setShowSavedTweets] = useState(false)
   const [savingTweet, setSavingTweet] = useState(null)
+  const [editingTweet, setEditingTweet] = useState(null)
+  const [editText, setEditText] = useState('')
 
   const remixTypes = [
     { value: 'improve', label: 'Improve Writing', description: 'Enhance clarity, flow, and impact of existing text while maintaining your voice' },
@@ -184,6 +186,47 @@ function App() {
     }
   }
 
+  const handleEditTweet = async (tweetId) => {
+    try {
+      const response = await fetch(`/api/saved-tweets/${tweetId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          content: editText
+        })
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to update tweet')
+      }
+
+      // Update the saved tweets list
+      setSavedTweets(savedTweets.map(tweet => 
+        tweet.id === tweetId ? { ...tweet, content: editText } : tweet
+      ))
+
+      // Exit edit mode
+      setEditingTweet(null)
+      setEditText('')
+    } catch (error) {
+      console.error('Error updating tweet:', error)
+      alert('Failed to update tweet: ' + error.message)
+    }
+  }
+
+  const startEdit = (tweet) => {
+    setEditingTweet(tweet.id)
+    setEditText(tweet.content)
+  }
+
+  const cancelEdit = () => {
+    setEditingTweet(null)
+    setEditText('')
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 py-8 relative">
       <div className="max-w-4xl mx-auto px-4">
@@ -299,29 +342,34 @@ function App() {
                           </span>
                         </div>
                         <p className="text-gray-800 whitespace-pre-wrap">{tweet}</p>
-                        <div className="mt-2 flex items-center space-x-4 text-sm text-gray-500">
-                          <button 
-                            onClick={() => navigator.clipboard.writeText(tweet)}
-                            className="hover:text-blue-600 transition-colors"
-                          >
-                            📋 Copy Tweet
-                          </button>
-                          <button 
-                            onClick={() => {
-                              const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweet)}`
-                              window.open(twitterUrl, '_blank')
-                            }}
-                            className="hover:text-blue-600 transition-colors"
-                          >
-                            🐦 Tweet Now
-                          </button>
-                          <button 
-                            onClick={() => handleSaveTweet(tweet, 'thread')}
-                            disabled={savingTweet === tweet}
-                            className="hover:text-green-600 transition-colors disabled:opacity-50"
-                          >
-                            {savingTweet === tweet ? '💾 Saving...' : '💾 Save'}
-                          </button>
+                        <div className="mt-3 space-y-2">
+                          <div className="flex gap-2">
+                            <button 
+                              onClick={() => navigator.clipboard.writeText(tweet)}
+                              className="flex-1 bg-blue-50 text-blue-600 px-3 py-2 rounded-lg text-sm font-medium hover:bg-blue-100 transition-colors flex items-center justify-center space-x-1"
+                            >
+                              <span>📋</span>
+                              <span>Copy</span>
+                            </button>
+                            <button 
+                              onClick={() => {
+                                const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweet)}`
+                                window.open(twitterUrl, '_blank')
+                              }}
+                              className="flex-1 bg-black text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors flex items-center justify-center space-x-1"
+                            >
+                              <span className="font-bold">𝕏</span>
+                              <span>Tweet</span>
+                            </button>
+                            <button 
+                              onClick={() => handleSaveTweet(tweet, 'thread')}
+                              disabled={savingTweet === tweet}
+                              className="flex-1 bg-green-50 text-green-600 px-3 py-2 rounded-lg text-sm font-medium hover:bg-green-100 transition-colors disabled:opacity-50 flex items-center justify-center space-x-1"
+                            >
+                              <span>{savingTweet === tweet ? '⏳' : '💾'}</span>
+                              <span>{savingTweet === tweet ? 'Saving...' : 'Save'}</span>
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -340,33 +388,37 @@ function App() {
                   {outputText.split('\n').filter(line => line.trim()).map((tweet, index) => (
                     <div key={index} className="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow">
                       <p className="text-gray-800 text-sm leading-relaxed mb-3">{tweet}</p>
-                      <div className="border-t border-gray-200 pt-3 flex justify-between items-center">
-                        <span className="text-xs text-gray-500">
-                          {280 - tweet.length} characters remaining
-                        </span>
-                        <div className="flex space-x-2">
+                      <div className="border-t border-gray-200 pt-4">
+                        <div className="flex justify-between items-center mb-3">
+                          <span className="text-xs text-gray-500 font-medium">
+                            {280 - tweet.length} characters remaining
+                          </span>
+                        </div>
+                        <div className="flex gap-2">
                           <button 
                             onClick={() => navigator.clipboard.writeText(tweet)}
-                            className="text-blue-600 text-sm hover:text-blue-800 transition-colors"
+                            className="flex-1 bg-blue-50 text-blue-600 px-3 py-2 rounded-lg text-sm font-medium hover:bg-blue-100 transition-colors flex items-center justify-center space-x-1"
                           >
-                            Copy
+                            <span>📋</span>
+                            <span>Copy</span>
                           </button>
                           <button 
                             onClick={() => handleSaveTweet(tweet, 'unique')}
                             disabled={savingTweet === tweet}
-                            className="text-green-600 text-sm hover:text-green-800 transition-colors disabled:opacity-50"
+                            className="flex-1 bg-green-50 text-green-600 px-3 py-2 rounded-lg text-sm font-medium hover:bg-green-100 transition-colors disabled:opacity-50 flex items-center justify-center space-x-1"
                           >
-                            {savingTweet === tweet ? 'Saving...' : 'Save'}
+                            <span>{savingTweet === tweet ? '⏳' : '💾'}</span>
+                            <span>{savingTweet === tweet ? 'Saving...' : 'Save'}</span>
                           </button>
                           <button 
                             onClick={() => {
                               const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweet)}`
                               window.open(twitterUrl, '_blank')
                             }}
-                            className="bg-black text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-800 transition-colors flex items-center space-x-1"
+                            className="flex-1 bg-black text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors flex items-center justify-center space-x-1"
                           >
-                            <span className="text-white font-bold text-xs">𝕏</span>
-                            <span>Post on X</span>
+                            <span className="font-bold">𝕏</span>
+                            <span>Post</span>
                           </button>
                         </div>
                       </div>
@@ -411,34 +463,81 @@ function App() {
                       <span className="text-xs text-gray-500">
                         {new Date(tweet.created_at).toLocaleDateString()}
                       </span>
-                      <button
-                        onClick={() => handleDeleteTweet(tweet.id)}
-                        className="text-red-500 hover:text-red-700 text-sm"
-                      >
-                        🗑️
-                      </button>
-                    </div>
-                    <p className="text-gray-800 text-sm mb-3 leading-relaxed">{tweet.content}</p>
-                    <div className="flex justify-between items-center text-xs text-gray-500">
-                      <span>{tweet.content.length}/280 characters</span>
                       <div className="flex space-x-2">
                         <button
-                          onClick={() => navigator.clipboard.writeText(tweet.content)}
-                          className="text-blue-600 hover:text-blue-800"
+                          onClick={() => startEdit(tweet)}
+                          className="text-blue-500 hover:text-blue-700 text-sm"
+                          title="Edit"
                         >
-                          Copy
+                          ✏️
                         </button>
                         <button
-                          onClick={() => {
-                            const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweet.content)}`
-                            window.open(twitterUrl, '_blank')
-                          }}
-                          className="text-blue-600 hover:text-blue-800"
+                          onClick={() => handleDeleteTweet(tweet.id)}
+                          className="text-red-500 hover:text-red-700 text-sm"
+                          title="Delete"
                         >
-                          Tweet
+                          🗑️
                         </button>
                       </div>
                     </div>
+                    
+                    {editingTweet === tweet.id ? (
+                      <div className="space-y-3">
+                        <textarea
+                          value={editText}
+                          onChange={(e) => setEditText(e.target.value)}
+                          className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-sm"
+                          rows={3}
+                        />
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-gray-500">
+                            {editText.length}/280 characters
+                          </span>
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => handleEditTweet(tweet.id)}
+                              className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700 transition-colors"
+                            >
+                              Save
+                            </button>
+                            <button
+                              onClick={cancelEdit}
+                              className="bg-gray-500 text-white px-3 py-1 rounded text-sm hover:bg-gray-600 transition-colors"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-gray-800 text-sm mb-3 leading-relaxed">{tweet.content}</p>
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-center text-xs text-gray-500">
+                            <span className="font-medium">{tweet.content.length}/280 characters</span>
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => navigator.clipboard.writeText(tweet.content)}
+                              className="flex-1 bg-blue-50 text-blue-600 px-3 py-2 rounded-lg text-sm font-medium hover:bg-blue-100 transition-colors flex items-center justify-center space-x-1"
+                            >
+                              <span>📋</span>
+                              <span>Copy</span>
+                            </button>
+                            <button
+                              onClick={() => {
+                                const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweet.content)}`
+                                window.open(twitterUrl, '_blank')
+                              }}
+                              className="flex-1 bg-black text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors flex items-center justify-center space-x-1"
+                            >
+                              <span className="font-bold">𝕏</span>
+                              <span>Tweet</span>
+                            </button>
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 ))}
               </div>

@@ -258,6 +258,44 @@ app.get('/api/saved-tweets', (req, res) => {
   })
 })
 
+// Update a saved tweet
+app.put('/api/saved-tweets/:id', (req, res) => {
+  const { id } = req.params
+  const { content } = req.body
+
+  if (!id || isNaN(id)) {
+    return res.status(400).json({ error: 'Valid tweet ID is required' })
+  }
+
+  if (!content || typeof content !== 'string' || content.trim().length === 0) {
+    return res.status(400).json({ 
+      error: 'Tweet content is required and must be a non-empty string' 
+    })
+  }
+
+  if (content.length > 280) {
+    return res.status(400).json({ 
+      error: 'Tweet content is too long. Maximum 280 characters allowed.' 
+    })
+  }
+
+  db.run('UPDATE saved_tweets SET content = ? WHERE id = ?', [content.trim(), id], function(err) {
+    if (err) {
+      console.error('Error updating tweet:', err)
+      return res.status(500).json({ error: 'Failed to update tweet' })
+    }
+    
+    if (this.changes === 0) {
+      return res.status(404).json({ error: 'Tweet not found' })
+    }
+    
+    res.json({ 
+      success: true, 
+      message: 'Tweet updated successfully' 
+    })
+  })
+})
+
 // Delete a saved tweet
 app.delete('/api/saved-tweets/:id', (req, res) => {
   const { id } = req.params
@@ -293,6 +331,7 @@ app.use('*', (req, res) => {
       'GET /api/remix-types',
       'POST /api/save-tweet',
       'GET /api/saved-tweets',
+      'PUT /api/saved-tweets/:id',
       'DELETE /api/saved-tweets/:id'
     ]
   })
